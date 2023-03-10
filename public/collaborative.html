@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Treasure Hunt</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
+
+</head>
+
+<body>
+  <a-scene environment="preset: goldmine">
+
+    <!-- Loading the 3D models as assets-->
+    <a-asset-item id="chestBox_model" response-type="arraybuffer" src="assets/chestBox/scene.gltf"></a-asset-item>
+    <a-asset-item id="woodenBoxes_model" response-type="arraybuffer" src="assets/woodenBoxes/scene.gltf"></a-asset-item>
+    <a-asset-item id="woodenBox_model" response-type="arraybuffer" src="assets/woodenBox/scene.gltf"></a-asset-item>
+    <a-asset-item id="tressureBox_model" response-type="arraybuffer" src="assets/tressureBox/scene.gltf"></a-asset-item>
+
+    <!-- Creating camera, cursor, controls, game instructions, and timer-->
+    <a-entity id="camera" camera wasd-controls look-controls mouse-cursor position="0 1.6 0">
+
+      <a-entity cursor="rayOrigin:mouse;" raycaster="far:20; interval:200; objects:.interactive"></a-entity>
+      <a-entity
+        text="value:Colaborate with your partner and find all the treasure before the time is up!; wrapCount:68;width:5.25; color:black; anchor:center;"
+        position="0  2 -3"></a-entity>
+      <a-entity id="timerTitle" text="value: Timer:; width: 5.25;" position="5.2  2 -3"></a-entity>
+      <a-entity id="timer" text="value: 61; width: 5.25;" position="6  2 -3"></a-entity>
+
+    </a-entity>
+
+    <!-- Creating the Aframe entities from the 3D models-->
+
+    <!-- Boxes with treassure-->
+    <a-entity id="woodenBox-01" class="originalBox interactive" position="0 0 -13" rotation="0 0 0" scale="1 1 1"
+      gltf-model="#chestBox_model"></a-entity>
+
+    <a-entity id="woodenBoxesTressure" class="originalBox interactive" position="6.39 0 -9.191" rotation="0 45 0"
+      scale="5 5 5" gltf-model="#woodenBoxes_model"></a-entity>
+
+    <a-entity id="woodenBox" class="originalBox interactive" position="5.37 0 0" rotation="0 90 0"
+      scale="0.12 0.12 0.12" gltf-model="#woodenBox_model"></a-entity>
+
+    <a-entity id="tressureBox" class="originalBox interactive" position="-12.260 0 0.051" rotation="0 0 0"
+      scale="0.5 0.5 0.5" gltf-model="#tressureBox_model"></a-entity>
+
+    <!-- Empty Boxes-->
+    <a-entity class="interactive" position="3.361 0 -11.194" rotation="0 0 0" scale="0.5 0.5 0.5"
+      gltf-model="#tressureBox_model"></a-entity>
+
+    <a-entity class="interactive" position="-11.282 0 -12.191" rotation="0 90 0" scale="5 5 5"
+      gltf-model="#woodenBoxes_model"></a-entity>
+
+    <!-- treasure -->
+    <a-entity id="hidden-object" position="0 2 -5" visible="false">
+      <a-entity text="value: Treasure!; width: 3.5; anchor:center; color:rgb(255,200,0)" position="0 0 0"></a-entity>
+      <a-entity geometry="primitive: sphere; radius: 0.5" material="color: rgb(255,200,0)" position="0 0 0"></a-entity>
+    </a-entity>
+
+  </a-scene>
+
+  <!-- 2D screens for winning the game and losing and the score-->
+  <div
+    style="display:block; position: absolute; z-index: 1; border: 5px solid #3a1e0e; color: black; background-color: #dba86f; font-size:20px; border-radius: 10px; padding: 10px; width:10%; right: 35px; left:20px; top: 45px;">
+    <p>Objects Found: <span id="found-objects">0</span>/4</p>
+  </div>
+
+  <div id="game-over"
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-color: rgba(0, 0, 0, 0.7);">
+    <h1 style="color: white; font-size:80px; text-align: center; margin-top: 20%;">Game Over</h1>
+  </div>
+
+  <div id="game-won"
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-color: rgba(255, 204, 1);">
+    <h1 style="color: rgb(0, 0, 0); font-size:80px; text-align: center; margin-top: 20%;">You Won The Game!!</h1>
+  </div>
+
+  <script>
+
+    const socket = io();
+
+    let foundObjects = 0; //keep track of objects found
+    const boxes = document.querySelectorAll('.originalBox'); //find all the objects with this class to unhide treassure
+
+    const camera = document.querySelector("#camera");
+   
+    //for displaying object found on screen in 2D
+    const foundObjectsDisplay = document.querySelector('#found-objects');
+    foundObjectsDisplay.textContent = foundObjects;
+
+    //loop through the boxes and add a click event to each
+    boxes.forEach(box => {
+      let clicked = false;
+      box.addEventListener('click', handleClick);
+      
+      //keep track of what box was clicked, send to server, then make it unclickable
+      function handleClick() {
+        if (!clicked) {
+          console.log('box clicked');
+          socket.emit('click', box.id);
+          clicked = true;
+          box.removeEventListener('click', handleClick);
+        }
+      }
+    });
+
+    socket.on('click', (boxId) => {
+      console.log('Received click event:', boxId);
+      socket.emit('unhide', boxId);
+    });
+
+
+    socket.on('unhide', (boxId) => {
+      console.log('Received unhide event:', boxId);
+      const hiddenObject = document.querySelector('#hidden-object');
+      hiddenObject.setAttribute('visible', true); //reveal hidden object
+
+      hiddenObject.setAttribute('position', {
+        x: camera.object3D.position.x - Math.sin(camera.object3D.rotation.y) * 5, ////x position offset by a distance of 5 from the camera
+        y: Math.floor(Math.random() * (3 - 1 + 1)) + 1, //find random number between 1-3 and round to nearest integer
+        z: camera.object3D.position.z - Math.cos(camera.object3D.rotation.y) * 5 //z position offset by a distance of 5 from the camera
+      });
+
+      const clickedBox = document.getElementById(boxId);
+      if (clickedBox) {
+        foundObjects++; //increament number of objects found
+        foundObjectsDisplay.textContent = foundObjects;
+
+        console.log(`Found ${foundObjects} objects`);
+        if (foundObjects === 4) { // if 4 objects are found send game over event
+          console.log("found all objects")
+          socket.emit('gameOver');
+        }
+      }
+    });
+
+
+    socket.on('gameOver', () => { //listen for game over event and emit the game won event
+      console.log('Received gameOver event');
+      socket.emit('gameWon');
+    });
+
+    socket.on('gameWon', () => { //when game won event is recieved -> game won screen is set to block to be visible
+      console.log('Received gameWon event');
+      const endScreen = document.querySelector('#game-won');
+      endScreen.style.display = 'block';
+    });
+
+    function updateTimer() {
+      let timerEl = document.querySelector('#timer');
+      let timeRemaining = parseInt(timerEl.getAttribute('text').value) - 1; //updates the text attribute of the html element
+      timerEl.setAttribute('text', 'value', timeRemaining.toString());
+      socket.emit('timer', timeRemaining);
+      if (timeRemaining <= 0) { //display game over screen because player ran out of time
+        const gameOverEl = document.querySelector('#game-over');
+        gameOverEl.style.display = 'block';
+      } else {
+        setTimeout(updateTimer, 300); //run the function again with 300 mmilliseconds (0.3 seconds) delay
+      }
+    }
+
+    updateTimer(); //start the timer
+
+  </script>
+  </a-scene>
+</body>
+
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Character Race</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
+</head>
+
+<body>
+  <a-scene environment="preset: forest">
+
+    <!-- Loading the 3D models as assets-->
+    <a-asset-item id="robot_model" response-type="arraybuffer" src="assets/robot/scene.gltf"></a-asset-item>
+    <a-asset-item id="dog_model" response-type="arraybuffer" src="assets/shiba/scene.gltf"></a-asset-item>
+    <a-asset-item id="frog_model" response-type="arraybuffer" src="assets/frog/scene.gltf"></a-asset-item>
+
+    <!-- Creating camera, cursor, controls and game instructions-->
+    <a-entity id="camera" camera wasd-controls look-controls mouse-cursor position="4.9 1.9 5">
+
+      <a-entity cursor="rayOrigin:mouse;" raycaster="far:20; interval:200; objects:.interactive"></a-entity>
+      <a-entity text="value: Chose your character and start clicking on the button realted to it and get your character till the end line before anyone else!; 
+        width:7; anchor:center; wrapCount:68; color:black;" position="0.5 1 -3"></a-entity>
+
+    </a-entity>
+
+    <!-- Creating the Aframe entities from the 3D models-->
+    <a-entity id="robot" class="interactive" position="0 0.088 -3" rotation="0 -90 0" scale="0.8 0.8 0.8"
+      gltf-model="#robot_model"></a-entity>
+
+    <a-entity id="dog" class="interactive" position="0.309 1.2 -1.382" rotation="0 90 0" scale="1.2 1.2 1.2"
+      gltf-model="#dog_model"></a-entity>
+
+    <a-entity id="frog" class="interactive" position="0.698 2.52 -5.38" rotation="0 90 0" scale="1.5 1.5 1.5"
+      gltf-model="#frog_model"></a-entity>
+
+    <!-- Creating all the buttons and text for the character movement-->
+    <a-entity id="dog_button">
+      <a-entity class="button interactive" position="2 0.6 2" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+        material="color:rgb(255,255,153)"
+        animation__mouseenter="property:material.color; type:color; to:rgb(255,255,0); startEvents:mouseenter; dur:200"
+        animation__mouseleave="property:material.color; type:color; to:rgb(255,255,153); startEvents:mouseleave; dur:200"
+        animation__click="property:position; from:2 0.55 2; to:2 0.6 2; startEvents:click; dur:300"></a-entity>
+      <a-entity position="2 0.3 2" geometry="primitive:box; width:0.5; depth:0.5; height:0.6;"
+        material="color:rgb(204, 85, 0)" shadow></a-entity>
+      <a-text value="Dog Button" scale="0.5 0.5 0.5" position="2 0.486 2.5" color="white"></a-text>
+    </a-entity>
+
+    <a-entity id="robot_button">
+      <a-entity class="button interactive" position="3.2 0.6 2" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+        material="color:rgb(255,255, 255)"
+        animation__mouseenter="property:material.color; type:color; to:rgb(169,169,169); startEvents:mouseenter; dur:200"
+        animation__mouseleave="property:material.color; type:color; to:rgb(255,255, 255); startEvents:mouseleave; dur:200"
+        animation__click="property:position; from:3.2 0.55 2; to:3.2 0.6 2; startEvents:click; dur:300"></a-entity>
+      <a-entity position="3.2 0.3 2" geometry="primitive:box; width:0.5; depth:0.5; height:0.6;"
+        material="color:purple"></a-entity>
+      <a-text value="Robot Button" scale="0.5 0.5 0.5" position="3.1 0.486 2.5" color="white"></a-text>
+    </a-entity>
+
+    <a-entity id="frog_button">
+      <a-entity class="button interactive" position="4.5 0.6 2" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+        material="color:rgb(255, 100, 100)"
+        animation__mouseenter="property:material.color; type:color; to:rgb(255, 0, 0); startEvents:mouseenter; dur:200"
+        animation__mouseleave="property:material.color; type:color; to:rgb(255, 100, 100); startEvents:mouseleave; dur:200"
+        animation__click="property:position; from:4.5 0.55 2; to:4.5 0.6 2; startEvents:click; dur:300"></a-entity>
+      <a-entity position="4.5 0.3 2" geometry="primitive:box; width:0.5; depth:0.5; height:0.6;"
+        material="color:green"></a-entity>
+      <a-text value="Frog Button" scale="0.5 0.5 0.5" position="4.3 0.486 2.5" color="white"></a-text>
+    </a-entity>
+
+    <!-- Creating the end line shape and text-->
+    <a-entity text="value:--END LINE--; color:black;width:4" position="7.5 0.955 -1"></a-entity>
+    <a-entity id="endLine" position="5 0.955 -5.007" rotation="0 -90 0" scale="10 2 2"
+      geometry="primitive:box; width:1.0; height:1.0; depth:0.05" material="color:rgb(255, 0, 0);"></a-entity>
+
+  </a-scene>
+
+  <!--Creating the 2D win and lose UI-->
+  <div id="win_UI"
+    style="display:none; position: absolute; z-index: 1; border: 5px solid #3a1e0e; color: black; background-color: #2bf33b; border-radius: 10px; width:20%; margin:auto; left:0; right:0;  top: 45px;">
+    <h1>You Won The Race!</h1>
+  </div>
+
+  <div id="lose_UI"
+    style="display:none; position: absolute; z-index: 1; border: 5px solid #3a1e0e; color: black; background-color: #ee827a; border-radius: 10px; width:35%; margin:auto; left:0; right:0;  top: 45px;">
+    <h1>Oh noo, another player already won!</h1>
+  </div>
+
+  <script>
+    const socket = io(); //creates a Socket.IO instance to communicate with the server
+
+    /* Getting all the elements by their id*/
+    const winScreen = document.querySelector('#win_UI');
+    const loseScreen = document.querySelector('#lose_UI');
+    const dog = document.querySelector('#dog');
+    const robot = document.querySelector('#robot');
+    const frog = document.querySelector('#frog'); 
+    
+    const dogButton = document.querySelector('#dog_button');
+    const robotButton = document.querySelector('#robot_button');
+    const frogButton = document.querySelector('#frog_button');
+
+    //register a function that will be called when the client successfully connects to the server
+    socket.on('connect', (userData) => {
+      console.log("I am connected!");
+
+      //add a click event listener to the button to update the x position of character and insert it into the newPosition array
+      dogButton.addEventListener('click', () => {
+        const currentPosition = dog.getAttribute('position');
+        const newPosition = {
+          x: currentPosition.x + 0.5,
+          y: currentPosition.y,
+          z: currentPosition.z
+        };
+        //if the object reaches the end line where x is more than 5 -> trigger win screen and send to server
+        if (newPosition.x > 5) {
+          console.log('Object has reached the winning position!');
+          socket.emit('win');
+          winScreen.style.display = 'block';
+        } else {
+          dog.setAttribute('position', newPosition); //keep updating the new position and send to server
+          socket.emit('updatePosition', { id: 'dog', position: newPosition });
+        }
+      });
+
+      //add a click event listener to the button to update the x position of character and insert it into the newPosition array
+      robotButton.addEventListener('click', () => {
+        const currentPosition = robot.getAttribute('position');
+        const newPosition = {
+          x: currentPosition.x + 0.5,
+          y: currentPosition.y,
+          z: currentPosition.z
+        };
+        //if the object reaches the end line where x is more than 4 -> trigger win screen and send to server
+        if (newPosition.x > 4) {
+          console.log('Object has reached the winning position!');
+          socket.emit('win');
+          winScreen.style.display = 'block';
+        } else {
+          robot.setAttribute('position', newPosition);//keep updating the new position and send to server
+          socket.emit('updatePosition', { id: 'robot', position: newPosition });
+        }
+      });
+
+      //add a click event listener to the button to update the x position of character and insert it into the newPosition array
+      frogButton.addEventListener('click', () => {
+        const currentPosition = frog.getAttribute('position');
+        const newPosition = {
+          x: currentPosition.x + 0.5,
+          y: currentPosition.y,
+          z: currentPosition.z
+        };
+        //if the object reaches the end line where x is more than 5 -> trigger win screen and send to server
+        if (newPosition.x > 5) {
+          console.log('Object has reached the winning position!');
+          socket.emit('win');
+          winScreen.style.display = 'block';
+        } else {
+          frog.setAttribute('position', newPosition);//keep updating the new position and send to server
+          socket.emit('updatePosition', { id: 'frog', position: newPosition });
+        }
+      });
+
+      //recieve position data from server and updates the position of an object in the scene 
+      socket.on('updatePosition', data => {
+        const object = document.querySelector(`#${data.id}`);
+        if (object) {
+          const currentPosition = object.getAttribute('position');
+          const newPosition = {
+            x: data.position.x,
+            y: currentPosition.y,
+            z: currentPosition.z
+          };
+          object.setAttribute('position', newPosition);
+        }
+      });
+
+      socket.on('win', () => {
+        // show win screen 
+        winScreen.style.display = 'block';
+      });
+
+      socket.on('lose', () => {
+        // show lose screen
+        loseScreen.style.display = 'block';
+      });
+
+    });
+  </script>
+</body>
+
+</html>
